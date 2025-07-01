@@ -10,13 +10,9 @@ class APIClient:
     def __init__(self, provider="Ollama", base_url="http://localhost:11434"):
         self.provider = provider
         self.base_url = base_url.rstrip('/')
-        if self.provider in ("LM Studio", "Koboldcpp"):
-            self.api_endpoint = f"{self.base_url}/v1/chat/completions"
-            self.models_endpoint = f"{self.base_url}/v1/models"
-        else:  # Ollama
-            self.api_endpoint = f"{self.base_url}/api/chat"
-            self.models_endpoint = f"{self.base_url}/api/tags"
-            self.unload_endpoint = f"{self.base_url}/api/unload"
+        self.api_endpoint = f"{self.base_url}/v1/chat/completions"
+        self.models_endpoint = f"{self.base_url}/v1/models"
+        # self.unload_endpoint = f"{self.base_url}/v1/unload"
 
     def get_available_models(self):
         """Fetches the list of available models from the API."""
@@ -58,17 +54,14 @@ class APIClient:
         
         if images and messages and messages[-1]['role'] == 'user':
             last_message = messages[-1]
-            if self.provider in ("LM Studio", "Koboldcpp"):
-                content_parts = [{"type": "text", "text": last_message['content']}]
-                for img_path in images:
-                    b64_img = self._encode_image(img_path)
-                    content_parts.append({
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}
-                    })
-                last_message['content'] = content_parts
-            else: # Ollama
-                last_message['images'] = [self._encode_image(img_path) for img_path in images]
+            content_parts = [{"type": "text", "text": last_message['content']}]
+            for img_path in images:
+                b64_img = self._encode_image(img_path)
+                content_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}
+                })
+            last_message['content'] = content_parts
 
         payload = {
             "model": model,
@@ -111,10 +104,8 @@ class APIClient:
                                 if not json_str:
                                     continue
                                 chunk = json.loads(json_str)
-                                if self.provider == "LM Studio":
+                                if self.provider in ("LM Studio", "Ollama"):
                                     content = chunk['choices'][0]['delta'].get('content', '')
-                                else: # Ollama
-                                    content = chunk['message'].get('content', '')
                                 if content:
                                     yield content
                             elif "{" in decoded_line:
